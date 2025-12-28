@@ -133,6 +133,130 @@ function localized_month(locale, mo_idx) {
   return d.toLocaleDateString(locale, {"month":"short"});
 }
 
+function neatocal_euro() {
+  let year      = NEATOCAL_PARAM.year;
+  let start_mo  = NEATOCAL_PARAM.start_month;
+  let n_mo      = NEATOCAL_PARAM.n_month;
+
+  let ui_tr_mo = document.getElementById("ui_tr_month_name");
+  ui_tr_mo.innerHTML = "";
+  for (let i_mo = start_mo; i_mo < (start_mo+n_mo); i_mo++) {
+    ui_tr_mo.appendChild( H.th( NEATOCAL_PARAM.month_code[ i_mo%12 ] ) );
+  }
+
+  let week_count = 1;
+  let week_parity = 0;
+  let day_parity = {};
+  let day_week_no = {};
+  for (let i_mo = start_mo; i_mo < (start_mo+n_mo); i_mo++) {
+
+    let cur_year = parseInt(year) + Math.floor(i_mo/12);
+    let cur_mo = i_mo%12;
+    let nday_in_mo = new Date(cur_year,cur_mo+1,0).getDate();
+
+    if (!(i_mo in day_parity)) {
+      day_parity[i_mo] = {};
+      day_week_no[i_mo] = {};
+    }
+
+    for (let day_idx=0; day_idx < 31; day_idx++) {
+      if (day_idx >= nday_in_mo) { break; }
+
+      day_parity[i_mo][day_idx] = week_parity;
+      day_week_no[i_mo][day_idx] = week_count;
+
+      let dt = new Date(cur_year, cur_mo, day_idx+1);
+      if (dt.getDay() == 0) {
+        week_parity = 1-week_parity;
+        week_count++;
+      }
+
+    }
+
+  }
+
+  let tbody = document.getElementById("ui_tbody");
+  for (let idx=0; idx<31; idx++) {
+
+    let tr = H.tr();
+    if ((typeof NEATOCAL_PARAM.cell_height !== "undefined") &&
+        (NEATOCAL_PARAM.cell_height != null) &&
+        (NEATOCAL_PARAM.cell_height != "")) {
+      tr.style.height = NEATOCAL_PARAM.cell_height;
+    }
+
+
+    let cur_year = year;
+    for (let i_mo = start_mo; i_mo < (start_mo+n_mo); i_mo++) {
+
+      //if (i_mo >= 12) { cur_year = parseInt(year)+1; }
+      cur_year = parseInt(year) + Math.floor(i_mo/12);
+
+      let cur_mo = i_mo%12;
+
+      let nday_in_mo = new Date(cur_year,cur_mo+1,0).getDate();
+
+      let td = H.td();
+      td.style.width = (100/n_mo).toString() + "%";
+
+      td.id = "ui_" + fmt_date(cur_year, cur_mo+1, idx+1);
+
+      if (idx < nday_in_mo) {
+
+        let dt = new Date(cur_year, cur_mo, idx+1);
+
+        let d = NEATOCAL_PARAM.weekday_code[ dt.getDay() ];
+
+        if (day_parity[i_mo][idx]) {
+          td.classList.add("weekend");
+        }
+
+        if ((dt.getDay() != 0) ||
+            (idx == (nday_in_mo-1))) {
+          td.style.borderBottom = '0';
+        }
+
+
+        let span_date = H.span((idx+1).toString(), "date");
+        let span_day = H.span(d, "day");
+
+        if (dt.getDay() == 0) {
+          span_date.style.color = "rgb(230,37,7)";
+          span_day.style.color = "rgb(230,37,7)";
+        }
+
+
+        td.appendChild( span_date );
+        td.appendChild( span_day );
+
+        if (dt.getDay() == 1) {
+          let span_week_no = H.span(day_week_no[cur_mo][idx], "date");
+          span_week_no.style.float = "right";
+          span_week_no.style.color = "rgb(230,37,7)";
+          td.appendChild(span_week_no);
+        }
+
+        let yyyy_mm_dd = fmt_date(cur_year, cur_mo+1, idx+1);
+        if (yyyy_mm_dd in NEATOCAL_PARAM.data) {
+          let txt = H.div();
+          txt.innerHTML = NEATOCAL_PARAM.data[yyyy_mm_dd];
+          txt.style.textAlign = "center";
+          txt.style.fontWeight = "300";
+
+          td.appendChild(txt);
+        }
+
+      }
+      tr.appendChild(td);
+
+    }
+
+    tbody.appendChild(tr);
+
+  }
+
+}
+
 function neatocal_default() {
   let year      = NEATOCAL_PARAM.year;
   let start_mo  = NEATOCAL_PARAM.start_month;
@@ -157,7 +281,7 @@ function neatocal_default() {
 
     let cur_year = year;
     for (let i_mo = start_mo; i_mo < (start_mo+n_mo); i_mo++) {
-      
+
       //if (i_mo >= 12) { cur_year = parseInt(year)+1; }
       cur_year = parseInt(year) + Math.floor(i_mo/12);
 
@@ -471,8 +595,9 @@ function neatocal_init() {
   if ((layout_param != null) &&
       (typeof layout_param !== "undefined")) {
     _l = sp.get("layout");
-    if      (_l == "default")         { layout = "default"; }
-    else if (_l == "aligned-weekdays") { layout = "aligned-weekdays"; }
+    if      (_l == "default")           { layout = "default"; }
+    else if (_l == "aligned-weekdays")  { layout = "aligned-weekdays"; }
+    else if (_l == "euro")              { layout = "euro"; }
   }
   NEATOCAL_PARAM.layout = layout;
 
@@ -648,6 +773,9 @@ function neatocal_render() {
 
   if (layout == "aligned-weekdays") {
     neatocal_aligned_weekdays();
+  }
+  else if (layout == "euro") {
+    neatocal_euro();
   }
   else {
     neatocal_default();
